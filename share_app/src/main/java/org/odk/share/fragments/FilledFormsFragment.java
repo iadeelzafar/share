@@ -4,10 +4,12 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +18,9 @@ import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.odk.collect.android.dao.InstancesDao;
 import org.odk.collect.android.provider.InstanceProviderAPI;
 import org.odk.share.R;
@@ -56,6 +61,8 @@ public class FilledFormsFragment extends InstanceListFragment implements LoaderM
     private static final int INSTANCE_LOADER = 1;
     private InstanceAdapter instanceAdapter;
     private LinkedHashSet<Long> selectedInstances;
+    private ArrayList<Integer> backupSelectedInstances=new ArrayList<>();
+    private final String SELECTED_INSTANCES_KEY="ROTATION_SELECTED_INSTANCES";
 
 
     public FilledFormsFragment() {
@@ -67,14 +74,39 @@ public class FilledFormsFragment extends InstanceListFragment implements LoaderM
         setHasOptionsMenu(true);
         View view = inflater.inflate(R.layout.fragment_forms, container, false);
         ButterKnife.bind(this, view);
-
         selectedInstances = new LinkedHashSet<>();
-
         LinearLayoutManager llm = new LinearLayoutManager(getActivity());
         llm.setOrientation(LinearLayoutManager.VERTICAL);
         recyclerView.setLayoutManager(llm);
+
+        if(savedInstanceState!=null)
+        {
+                backupSelectedInstances=savedInstanceState.getIntegerArrayList(SELECTED_INSTANCES_KEY);
+                CheckBox checkBox;
+                for(int i=0;i<backupSelectedInstances.size();i++)
+                {
+                    View newView=recyclerView.getChildAt(backupSelectedInstances.get(i));
+                    checkBox = newView.findViewById(R.id.checkbox);
+                    checkBox.setChecked(true);
+                }
+        }
         return view;
+
     }
+
+    //@Override public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
+    //    Log.v("DANG"," 1");
+    //    super.onViewStateRestored(savedInstanceState);
+    //    backupSelectedInstances=savedInstanceState.getIntegerArrayList(SELECTED_INSTANCES_KEY);
+    //    CheckBox checkBox;
+    //    for(int i=0;i<backupSelectedInstances.size();i++)
+    //    {
+    //        View view=recyclerView.getChildAt(backupSelectedInstances.get(i));
+    //        checkBox = view.findViewById(R.id.checkbox);
+    //        checkBox.setChecked(true);
+    //    }
+    //
+    //}
 
     @Override
     public void onResume() {
@@ -86,6 +118,12 @@ public class FilledFormsFragment extends InstanceListFragment implements LoaderM
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         return new InstancesDao().getSavedInstancesCursorLoader(getFilterText(), getSortingOrder());
+    }
+
+    @Override public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putIntegerArrayList(SELECTED_INSTANCES_KEY,backupSelectedInstances);
+
     }
 
     @Override
@@ -125,6 +163,12 @@ public class FilledFormsFragment extends InstanceListFragment implements LoaderM
         } else {
             selectedInstances.add(id);
         }
+
+        if(backupSelectedInstances.contains(position)){
+            backupSelectedInstances.remove(position);
+        }
+        else
+            backupSelectedInstances.add(position);
 
         sendButton.setEnabled(selectedInstances.size() > 0);
 
